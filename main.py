@@ -1,5 +1,3 @@
-from time import time
-
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
