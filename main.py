@@ -17,6 +17,7 @@ from sklearn.cluster import SpectralClustering
 import numpy as np
 import matplotlib.cm as cm
 import matplotlib as mpl
+from scipy.stats import ttest_ind
 import seaborn as sns; sns.set()
 
 mpl.rcParams['agg.path.chunksize'] = 10000
@@ -59,6 +60,16 @@ def create_graph(SSE, y_text = "SSE", start_point = 1):
     plt.ylabel(y_text)
     plt.show()
 
+def t_Test(df,labels):
+    for j in range(0,max(labels)+1):
+        df1 = df[labels == j]
+        for i in range (0,max(labels)+1):
+            df2 = df[labels == i]
+            res = ttest_ind(df1,df2)
+            if(i!=j):
+                print("the difference between: {} {}, is {}".format(j,i,res))
+            # print(df1,i)
+
 def KMeans_algo(train_df, train_label):
     SSE = []
     train_df = PCA(2, svd_solver="full").fit_transform(train_df)
@@ -74,6 +85,7 @@ def KMeans_algo(train_df, train_label):
 
         plt.title("K-Means"+str(i)+" scatter")
         plt.show()
+        t_Test(train_df,labels)
     kn = KneeLocator([i+1 for i in range(len(SSE))], SSE, curve='convex', direction='decreasing')
     print(kn.elbow)
     create_graph(SSE,y_text="Elbow Method")
@@ -92,6 +104,7 @@ def GMM_algo(df,label):
         plt.title("GMM - "+str(i)+" scatter")
         plt.scatter(x, y, c=cluster_of_each_point_in_data, cmap=cm.jet)
         plt.show()
+        t_Test(df,cluster_of_each_point_in_data)
     y_text = "Silhouette Score"
     create_graph(silhouette_score_list,y_text,start_point=2)
     # I got the best silhouette score with n_components = 2 with silhouette score = 0.355
@@ -108,6 +121,9 @@ def DBSCAN_algo(X_train, y_train):
         x = [item[0] for item in X_train]
         y = [item[1] for item in X_train]
         plt.scatter(x, y, c=labels, cmap=cm.jet)
+        plt.title("DBSCAN - "+str(i)+" scatter")
+        plt.show()
+        metrics.silhouette_score(X_train, labels, metric='euclidean')
         try:
             if(len(list(set(labels))) > 1):
                 silhouette_score_list.append(metrics.silhouette_score(X_train, labels, metric='euclidean'))
@@ -115,7 +131,6 @@ def DBSCAN_algo(X_train, y_train):
                 silhouette_score_list.append(-1)
         except:
             print("silhouette_score did not work")
-
         # print("Silhouette: ",silhouette_score(df,cluster_of_each_point_in_data))
 
         #Computing "the Silhouette Score"
@@ -123,6 +138,7 @@ def DBSCAN_algo(X_train, y_train):
         #   % metrics.silhouette_score(X_train, labels, metric='euclidean'))
 
         print(labels)
+        t_Test(X_train,labels)
     create_graph(silhouette_score_list, y_text="SSE", start_point=2)
 def PRIM_algo(X_train, y_train):
     # predict the labels with the MST algorithm
@@ -137,7 +153,9 @@ def PRIM_algo(X_train, y_train):
         print("this is x: ",x)
         print("this is y: ",y)
         plt.scatter(x, y, c=labels, cmap=cm.jet)
+        plt.title("PRIM - "+str(i)+" scatter")
         plt.show()
+
         try:
             if(len(list(set(labels))) > 1):
                 silhouette_score_list.append(metrics.silhouette_score(X_train, labels, metric='euclidean'))
@@ -150,6 +168,7 @@ def PRIM_algo(X_train, y_train):
         # #Computing "the Silhouette Score"
         # print("Silhouette Coefficient: %0.3f"
         #       % metrics.silhouette_score(X_train, labels, metric='euclidean'))
+        t_Test(X_train,labels)
         print(labels)
     if(len(silhouette_score_list)!=0):
         kn = KneeLocator([i+1 for i in range(len(silhouette_score_list))], silhouette_score_list, curve='convex', direction='decreasing')
@@ -161,18 +180,19 @@ def Spectral_algo(X_train,y_train):
     X_train = PCA(2, svd_solver="full").fit_transform(X_train)
     for i in range (2,10):
         spectral_cluter = SpectralClustering(n_clusters=i,
-                                        random_state=0).fit(X_train,y_train)
+                                             random_state=0).fit(X_train,y_train)
         silhouette_score_list.append(silhouette_score(X_train,spectral_cluter.labels_, metric='euclidean'))
         labels = spectral_cluter.labels_
         x = [item[0] for item in X_train]
         y = [item[1] for item in X_train]
         print("this is x: ",x)
         print("this is y: ",y)
-        plt.title(str(i)+" clusters")
+        plt.title("Spectral - "+str(i)+" clusters")
         plt.scatter(x, y, c=labels, cmap=cm.jet)
         plt.show()
         print(silhouette_score(X_train,spectral_cluter.labels_, metric='euclidean'))
         print(spectral_cluter)
+        t_Test(X_train,labels)
     create_graph(silhouette_score_list,y_text,start_point=2)
 
 def run_shop_clothing_2008():
@@ -181,13 +201,12 @@ def run_shop_clothing_2008():
     X_train, y_train, X_test, y_test = split_dataset(df,
                                                      the_classification,
                                                      thrashold_train_verify = 0.7,
-                                                     thrashold_tv_testing = 0.005)
+                                                     thrashold_tv_testing = 0.0008)
     KMeans_algo(df, the_classification)#0.0005
     GMM_algo(X_train,y_train)#0.005
-    DBSCAN_algo(X_train,y_train)#0.05
-    PRIM_algo(X_train,y_train)
-    Spectral_algo(X_train,y_train)
-
+    DBSCAN_algo(X_train,y_train)#0.005
+    PRIM_algo(X_train,y_train)#0.0005
+    Spectral_algo(X_train,y_train)#0.0008
 
 def cleaning_diabetic_dataset(df):
     print(df["payer_code"])
@@ -243,6 +262,7 @@ def cleaning_diabetic_dataset(df):
         print("the col: ",col,"with amount of: ",df[col].isnull().sum()," nan")
 
     # I will remove the col max_glu_serum A1Cresult because most of it is nan
+
     del df["max_glu_serum"]
     del df["A1Cresult"]
 
